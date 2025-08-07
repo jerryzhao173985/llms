@@ -66,17 +66,22 @@ class Server {
   providerService: ProviderService;
   transformerService: TransformerService;
 
+  private initPromise: Promise<void>;
+  
   constructor(options: ServerOptions = {}) {
     this.configService = new ConfigService(options);
     this.transformerService = new TransformerService(this.configService);
-    this.transformerService.initialize().finally(() => {
+    this.app = createApp();
+    
+    // Initialize services in proper order and store the promise
+    this.initPromise = this.transformerService.initialize().then(async () => {
       this.providerService = new ProviderService(
         this.configService,
         this.transformerService
       );
+      await this.providerService.initialize();
       this.llmService = new LLMService(this.providerService);
     });
-    this.app = createApp();
   }
 
   // Type-safe register method using Fastify native types
@@ -114,6 +119,9 @@ class Server {
 
   async start(): Promise<void> {
     try {
+      // Wait for services to be initialized
+      await this.initPromise;
+      
       this.app._server = this;
 
       this.app.addHook(

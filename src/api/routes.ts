@@ -101,12 +101,15 @@ async function processRequestTransformers(
   if (!bypass && provider.transformer?.use?.length) {
     !bypass && log("use transformers:", provider.transformer?.use);
     for (const providerTransformer of provider.transformer.use) {
+      log(`Provider transformer: name=${providerTransformer?.name}, type=${typeof providerTransformer}`);
       if (
         !providerTransformer ||
         typeof providerTransformer.transformRequestIn !== "function"
       ) {
+        log(`Skipping transformer ${providerTransformer?.name} - no transformRequestIn function`);
         continue;
       }
+      log(`Calling transformRequestIn for transformer: ${providerTransformer.name}`);
       const transformIn = await providerTransformer.transformRequestIn(
         requestBody,
         provider

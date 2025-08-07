@@ -35,6 +35,7 @@ function convertContentToString(content: unknown): string {
  */
 export class CerebrasTransformer implements Transformer {
   name = "cerebras";
+  // endPoint = "/v1/chat/completions"; // Disabled to avoid route conflict
 
   /**
    * Transform the request from Claude Code format to Cerebras format

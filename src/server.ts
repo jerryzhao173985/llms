@@ -70,6 +70,8 @@ class Server {
   providerService: ProviderService;
   transformerService: TransformerService;
 
+  private initPromise: Promise<void>;
+  
   constructor(options: ServerOptions = {}) {
     this.app = createApp(options.logger ?? true);
     this.configService = new ConfigService(options);
@@ -77,12 +79,15 @@ class Server {
       this.configService,
       this.app.log
     );
-    this.transformerService.initialize().finally(() => {
+
+    // Initialize services in proper order and store the promise
+    this.initPromise = this.transformerService.initialize().then(async () => {
       this.providerService = new ProviderService(
         this.configService,
         this.transformerService,
         this.app.log
       );
+      await this.providerService.initialize();
       this.llmService = new LLMService(this.providerService);
     });
   }
@@ -122,6 +127,9 @@ class Server {
 
   async start(): Promise<void> {
     try {
+      // Wait for services to be initialized
+      await this.initPromise;
+      
       this.app._server = this;
 
       this.app.addHook("preHandler", (request, reply, done) => {

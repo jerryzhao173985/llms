@@ -114,12 +114,15 @@ async function processRequestTransformers(
   // 执行provider级别的转换器
   if (!bypass && provider.transformer?.use?.length) {
     for (const providerTransformer of provider.transformer.use) {
+      log(`Provider transformer: name=${providerTransformer?.name}, type=${typeof providerTransformer}`);
       if (
         !providerTransformer ||
         typeof providerTransformer.transformRequestIn !== "function"
       ) {
+        log(`Skipping transformer ${providerTransformer?.name} - no transformRequestIn function`);
         continue;
       }
+      log(`Calling transformRequestIn for transformer: ${providerTransformer.name}`);
       const transformIn = await providerTransformer.transformRequestIn(
         requestBody,
         provider,

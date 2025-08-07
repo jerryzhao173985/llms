@@ -14,6 +14,10 @@ export class ProviderService {
   private modelRoutes: Map<string, ModelRoute> = new Map();
 
   constructor(private readonly configService: ConfigService, private readonly transformerService: TransformerService, private readonly logger: any) {
+    // Don't initialize providers in constructor - will be called separately
+  }
+
+  async initialize(): Promise<void> {
     this.initializeCustomProviders();
   }
 
@@ -51,9 +55,22 @@ export class ProviderService {
                     }
                   }
                   if (typeof transformer === 'string') {
+                    log(`Attempting to load transformer: '${transformer}'`);
+                    const allTransformers = this.transformerService.getAllTransformers();
+                    log(`Available transformers: ${Array.from(allTransformers.keys()).join(', ')}`);
+                    
                     const transformerInstance = this.transformerService.getTransformer(transformer);
+                    log(`Loading transformer '${transformer}': type=${typeof transformerInstance}`);
+                    
+                    if (!transformerInstance) {
+                      log(`ERROR: Transformer '${transformer}' not found!`);
+                      return undefined;
+                    }
+                    
                     if (typeof transformerInstance === 'function') {
-                      return new transformerInstance();
+                      const instance = new transformerInstance();
+                      log(`Instantiated transformer '${transformer}': name=${instance.name}`);
+                      return instance;
                     }
                     return transformerInstance;
                   }
@@ -71,8 +88,11 @@ export class ProviderService {
                     }
                     if (typeof transformer === 'string') {
                       const transformerInstance = this.transformerService.getTransformer(transformer);
+                      log(`Loading model transformer '${transformer}': type=${typeof transformerInstance}`);
                       if (typeof transformerInstance === 'function') {
-                        return new transformerInstance();
+                        const instance = new transformerInstance();
+                        log(`Instantiated model transformer '${transformer}': name=${instance.name}`);
+                        return instance;
                       }
                       return transformerInstance;
                     }

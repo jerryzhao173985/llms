@@ -83,11 +83,18 @@ export interface UnifiedTool {
 
 export type ThinkLevel = "none" | "low" | "medium" | "high";
 
+// Prediction content for OpenAI's predicted outputs feature
+export interface PredictionContent {
+  type: "content";
+  content: string;
+}
+
 // 统一的请求接口
 export interface UnifiedChatRequest {
   messages: UnifiedMessage[];
   model: string;
   max_tokens?: number;
+  max_completion_tokens?: number; // For o3 models
   temperature?: number;
   stream?: boolean;
   tools?: UnifiedTool[];
@@ -106,6 +113,16 @@ export interface UnifiedChatRequest {
 
     enabled?: boolean;
   };
+  response_format?: {
+    type: "text" | "json_object" | "json_schema";
+    json_schema?: {
+      name: string;
+      description?: string;
+      strict?: boolean;
+      schema: Record<string, any>;
+    };
+  };
+  prediction?: PredictionContent;
 }
 
 // 统一的响应接口
@@ -172,6 +189,16 @@ export interface OpenAIChatRequest {
     | "auto"
     | "none"
     | { type: "function"; function: { name: string } };
+  response_format?: {
+    type: "text" | "json_object" | "json_schema";
+    json_schema?: {
+      name: string;
+      description?: string;
+      strict?: boolean;
+      schema: Record<string, any>;
+    };
+  };
+  prediction?: PredictionContent;
 }
 
 // Anthropic 特定类型

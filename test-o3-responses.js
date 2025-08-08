@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 async function testO3ResponsesAPI() {
-  console.log('Testing OpenAI Responses API with o3-mini...\n');
+  console.log('Testing OpenAI Responses API with o4-mini...\n');
   console.log('This test verifies that the ResponsesApiTransformer correctly:');
   console.log('  1. Converts messages → input');
   console.log('  2. Converts max_tokens → max_output_tokens');
@@ -9,10 +9,10 @@ async function testO3ResponsesAPI() {
   console.log('  4. Handles response_format → text.format');
   console.log('\n==========================================\n');
   
-  // Test 1: Basic o3-mini request
-  console.log('Test 1: Basic o3-mini request via Responses API');
+  // Test 1: Basic o4-mini request
+  console.log('Test 1: Basic o4-mini request via Responses API');
   const basicRequest = {
-    model: "openai-responses,o3-mini",
+    model: "openai-responses,o4-mini",
     messages: [
       {
         role: "user",
@@ -22,12 +22,12 @@ async function testO3ResponsesAPI() {
     max_tokens: 10
   };
 
-  await makeRequest(basicRequest, 'Basic o3-mini');
+  await makeRequest(basicRequest, 'Basic o4-mini');
 
-  // Test 2: o3-mini with JSON response format
-  console.log('\nTest 2: o3-mini with JSON response format');
+  // Test 2: o4-mini with JSON response format
+  console.log('\nTest 2: o4-mini with JSON response format');
   const jsonRequest = {
-    model: "openai-responses,o3-mini",
+    model: "openai-responses,o4-mini",
     messages: [
       {
         role: "user",
@@ -40,12 +40,12 @@ async function testO3ResponsesAPI() {
     max_tokens: 50
   };
 
-  await makeRequest(jsonRequest, 'o3-mini JSON Mode');
+  await makeRequest(jsonRequest, 'o4-mini JSON Mode');
 
-  // Test 3: o3-mini with structured output
-  console.log('\nTest 3: o3-mini with structured output (json_schema)');
+  // Test 3: o4-mini with structured output
+  console.log('\nTest 3: o4-mini with structured output (json_schema)');
   const structuredRequest = {
-    model: "openai-responses,o3-mini",
+    model: "openai-responses,o4-mini",
     messages: [
       {
         role: "user",
@@ -71,7 +71,7 @@ async function testO3ResponsesAPI() {
     max_tokens: 100
   };
 
-  await makeRequest(structuredRequest, 'o3-mini Structured Output');
+  await makeRequest(structuredRequest, 'o4-mini Structured Output');
 
   // Test 4: Check transformer logs
   console.log('\n==========================================');

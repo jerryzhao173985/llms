@@ -12,7 +12,7 @@ import { log } from "../utils/log";
 // Model categories with their specific requirements
 const MODEL_CATEGORIES = {
   o3: {
-    models: ['o3', 'o3-mini', 'o3-mini-2025-01-31'],
+    models: ['o3', 'o3-pro', 'o4-mini', 'o3-mini', 'o3-mini-2025-01-31'],
     features: {
       useMaxCompletionTokens: true,
       supportsResponseFormat: true,

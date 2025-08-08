@@ -155,10 +155,6 @@ This implementation goes beyond the basic request by providing:
 - Model compatibility validation
 - Multiple transformer options
 
-## Note on o3 Models
-
-o3 models (including o3-mini) are not yet publicly available from OpenAI. The implementation is ready to support them when released, as it follows the same API structure as o1 models.
-
 ---
 
 **Implementation Status: COMPLETE ✅**

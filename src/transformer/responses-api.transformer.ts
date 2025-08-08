@@ -23,6 +23,7 @@ const RESPONSES_API_MODELS = [
   "o1",
   "o1-mini",
   "o3",
+  "o3-pro",
   "o3-mini",
   "o3-mini-2025-01-31",
   "o4-mini"
@@ -144,7 +145,10 @@ export class ResponsesApiTransformer implements Transformer {
       
       if (modelLower === 'o3') {
         minTokens = 5000;  // o3 needs substantial minimum
-        maxTokens = 100000; // o3 can handle more
+        maxTokens = 128000; // o3 can handle more
+      }else if (modelLower === 'o3-pro') {
+        minTokens = 8000;  // o3-pro needs substantial minimum
+        maxTokens = 128000; // o3-pro can handle more
       } else if (modelLower.includes('o3-mini') || modelLower === 'o3-mini-2025-01-31') {
         minTokens = 2000;  // Higher minimum for reasoning
         maxTokens = 16384;  // o3-mini limit
@@ -173,6 +177,8 @@ export class ResponsesApiTransformer implements Transformer {
       // The reasoning process consumes many tokens before generating the actual response
       if (modelLower === 'o3') {
         transformedRequest.max_output_tokens = 30000; // o3 needs substantial tokens
+      } else if (modelLower === 'o3-pro') {
+        transformedRequest.max_output_tokens = 30000; // o3-pro needs substantial tokens
       } else if (modelLower.includes('o3-mini')) {
         transformedRequest.max_output_tokens = 16000; // o3-mini max is 16384
       } else if (modelLower.includes('o4-mini')) {

@@ -14,7 +14,7 @@ import { log } from "../utils/log";
 
 const RESPONSES_API_MODELS = [
   "gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini",
-  "o3", "o3-mini", "o4-mini"
+  "o3", "o3-pro", "o3-mini", "o4-mini"
 ];
 
 export class ResponsesApiHybridTransformer implements Transformer {
@@ -173,10 +173,11 @@ export class ResponsesApiHybridTransformer implements Transformer {
 
     // Default tokens based on model
     if (modelLower.includes('o4-mini')) return 16000;
-    if (modelLower.includes('o3')) return 8000;
-    if (modelLower.includes('o3-mini')) return 4000;
+    if (modelLower.includes('o3-pro')) return 16000;
+    if (modelLower.includes('o3-mini')) return 8000;
+    if (modelLower.includes('o3')) return 16000;
     if (modelLower.includes('gpt-4.1')) return 4000;
-    return 2000;
+    return 4000;
   }
 
   /**

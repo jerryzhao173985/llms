@@ -57,14 +57,14 @@ function callOpenAI(requestBody) {
   });
 }
 
-// Test o3-mini with correct parameters
+// Test o4-mini with correct parameters
 async function testO3WithCorrectParams() {
-  console.log('\n🎯 Testing o3-mini with max_completion_tokens');
+  console.log('\n🎯 Testing o4-mini with max_completion_tokens');
   console.log('=' .repeat(50));
   
   try {
     const response = await callOpenAI({
-      model: 'o3-mini',
+      model: 'o4-mini',
       messages: [
         {
           role: 'user',
@@ -74,7 +74,7 @@ async function testO3WithCorrectParams() {
       max_completion_tokens: 100  // Use this instead of max_tokens
     });
     
-    console.log('✅ o3-mini model IS AVAILABLE!');
+    console.log('✅ o4-mini model IS AVAILABLE!');
     console.log('Model:', response.model);
     console.log('Response:', response.choices[0].message.content);
     console.log('\n⚠️ Important: o3 models use max_completion_tokens, not max_tokens');
@@ -86,14 +86,14 @@ async function testO3WithCorrectParams() {
   }
 }
 
-// Test o3-mini with JSON Mode using correct params
+// Test o4-mini with JSON Mode using correct params
 async function testO3JsonModeCorrect() {
-  console.log('\n🧪 Testing o3-mini with JSON Mode (response_format)');
+  console.log('\n🧪 Testing o4-mini with JSON Mode (response_format)');
   console.log('=' .repeat(50));
   
   try {
     const response = await callOpenAI({
-      model: 'o3-mini',
+      model: 'o4-mini',
       messages: [
         {
           role: 'user',
@@ -104,7 +104,7 @@ async function testO3JsonModeCorrect() {
       max_completion_tokens: 100
     });
     
-    console.log('✅ JSON Mode works with o3-mini!');
+    console.log('✅ JSON Mode works with o4-mini!');
     console.log('Response:', response.choices[0].message.content);
     
     const parsed = JSON.parse(response.choices[0].message.content);
@@ -113,7 +113,7 @@ async function testO3JsonModeCorrect() {
     return true;
   } catch (error) {
     if (error.message.includes('response_format')) {
-      console.log('⚠️ o3-mini may not support response_format parameter');
+      console.log('⚠️ o4-mini may not support response_format parameter');
       console.log('Error:', error.message);
     } else {
       console.error('❌ Error:', error.message);
@@ -122,14 +122,14 @@ async function testO3JsonModeCorrect() {
   }
 }
 
-// Test o3-mini with structured output
+// Test o4-mini with structured output
 async function testO3StructuredOutputCorrect() {
-  console.log('\n🧪 Testing o3-mini with Structured Output (json_schema)');
+  console.log('\n🧪 Testing o4-mini with Structured Output (json_schema)');
   console.log('=' .repeat(50));
   
   try {
     const response = await callOpenAI({
-      model: 'o3-mini',
+      model: 'o4-mini',
       messages: [
         {
           role: 'user',
@@ -155,7 +155,7 @@ async function testO3StructuredOutputCorrect() {
       max_completion_tokens: 100
     });
     
-    console.log('✅ Structured Output works with o3-mini!');
+    console.log('✅ Structured Output works with o4-mini!');
     console.log('Response:', response.choices[0].message.content);
     
     const parsed = JSON.parse(response.choices[0].message.content);
@@ -165,7 +165,7 @@ async function testO3StructuredOutputCorrect() {
     return true;
   } catch (error) {
     if (error.message.includes('response_format') || error.message.includes('json_schema')) {
-      console.log('⚠️ o3-mini may not support json_schema response format');
+      console.log('⚠️ o4-mini may not support json_schema response format');
       console.log('Error details:', error.message);
     } else {
       console.error('❌ Error:', error.message);
@@ -209,7 +209,7 @@ async function runTests() {
   console.log('=' .repeat(50));
   console.log('Timestamp:', new Date().toISOString());
   
-  // Test basic o3-mini availability
+  // Test basic o4-mini availability
   const o3Works = await testO3WithCorrectParams();
   
   if (o3Works) {
@@ -226,7 +226,7 @@ async function runTests() {
   console.log('=' .repeat(50));
   
   if (o3Works) {
-    console.log('✅ o3-mini model is AVAILABLE');
+    console.log('✅ o4-mini model is AVAILABLE');
     console.log('⚠️ Uses max_completion_tokens instead of max_tokens');
     console.log('🔧 Need to update transformer to handle this difference');
   }

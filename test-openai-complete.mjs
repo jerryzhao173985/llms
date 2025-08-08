@@ -60,25 +60,25 @@ function callOpenAI(requestBody) {
   });
 }
 
-// Test Suite 1: o3-mini with Response Format
+// Test Suite 1: o4-mini with Response Format
 async function testO3ResponseFormat() {
   console.log('\n' + '='.repeat(60));
-  console.log('🧪 Test Suite 1: o3-mini with Response Format');
+  console.log('🧪 Test Suite 1: o4-mini with Response Format');
   console.log('='.repeat(60));
 
   const tests = [
     {
-      name: 'Basic o3-mini test',
+      name: 'Basic o4-mini test',
       request: {
-        model: 'o3-mini',
+        model: 'o4-mini',
         messages: [{ role: 'user', content: 'Say hello' }],
         max_completion_tokens: 10
       }
     },
     {
-      name: 'o3-mini with JSON Mode',
+      name: 'o4-mini with JSON Mode',
       request: {
-        model: 'o3-mini',
+        model: 'o4-mini',
         messages: [
           { role: 'user', content: 'Return a JSON object with a greeting field saying hello. Respond only in JSON.' }
         ],
@@ -87,9 +87,9 @@ async function testO3ResponseFormat() {
       }
     },
     {
-      name: 'o3-mini with Structured Output',
+      name: 'o4-mini with Structured Output',
       request: {
-        model: 'o3-mini',
+        model: 'o4-mini',
         messages: [
           { role: 'user', content: 'Generate a simple task with title and completed status' }
         ],
@@ -276,7 +276,7 @@ async function testModelCompatibility() {
   console.log('='.repeat(60));
 
   const models = [
-    { name: 'o3-mini', param: 'max_completion_tokens', features: ['json_object', 'json_schema'] },
+    { name: 'o4-mini', param: 'max_completion_tokens', features: ['json_object', 'json_schema'] },
     { name: 'gpt-4o-mini', param: 'max_tokens', features: ['json_object', 'json_schema', 'prediction'] },
     { name: 'gpt-3.5-turbo', param: 'max_tokens', features: ['json_object'] }
   ];
@@ -303,9 +303,9 @@ async function testErrorHandling() {
 
   const tests = [
     {
-      name: 'o3-mini with wrong token parameter',
+      name: 'o4-mini with wrong token parameter',
       request: {
-        model: 'o3-mini',
+        model: 'o4-mini',
         messages: [{ role: 'user', content: 'Hello' }],
         max_tokens: 50  // Should be max_completion_tokens
       },
@@ -366,7 +366,7 @@ async function runCompleteTests() {
   console.log('=' .repeat(60));
   
   console.log('\n✅ Key Findings:');
-  console.log('1. o3-mini supports response_format (json_object and json_schema)');
+  console.log('1. o4-mini supports response_format (json_object and json_schema)');
   console.log('2. o3 models require max_completion_tokens instead of max_tokens');
   console.log('3. GPT-4o models support all features including prediction');
   console.log('4. GPT-3.5 only supports json_object, not json_schema');

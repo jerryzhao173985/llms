@@ -288,14 +288,14 @@ async function comparePredictionPerformance() {
   }
 }
 
-// Test with o3-mini model if available
+// Test with o4-mini model if available
 async function testWithO3Model() {
-  console.log('\n🧪 Test 5: Testing with o3-mini model (if available)');
+  console.log('\n🧪 Test 5: Testing with o4-mini model (if available)');
   
   try {
-    // First check if o3-mini is available
+    // First check if o4-mini is available
     const response = await callOpenAI({
-      model: 'o3-mini',
+      model: 'o4-mini',
       messages: [
         {
           role: 'user',
@@ -306,13 +306,13 @@ async function testWithO3Model() {
       max_tokens: 50
     });
     
-    console.log('✅ o3-mini Success!');
+    console.log('✅ o4-mini Success!');
     console.log('Response:', response.choices[0].message.content);
     
-    // Try structured output with o3-mini
-    console.log('\nTesting structured output with o3-mini...');
+    // Try structured output with o4-mini
+    console.log('\nTesting structured output with o4-mini...');
     const structuredResponse = await callOpenAI({
-      model: 'o3-mini',
+      model: 'o4-mini',
       messages: [
         {
           role: 'user',
@@ -339,12 +339,12 @@ async function testWithO3Model() {
       max_tokens: 100
     });
     
-    console.log('✅ o3-mini Structured Output Success!');
+    console.log('✅ o4-mini Structured Output Success!');
     console.log('Response:', structuredResponse.choices[0].message.content);
     
   } catch (error) {
     if (error.message.includes('does not exist') || error.message.includes('not found') || error.message.includes('invalid_model')) {
-      console.log('ℹ️ o3-mini model not available (expected - o3 is not yet publicly released)');
+      console.log('ℹ️ o4-mini model not available (expected - o3 is not yet publicly released)');
       console.log('Note: o3 models are currently in preview/development');
     } else {
       console.error('❌ Error:', error.message);

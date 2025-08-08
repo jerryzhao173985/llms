@@ -27,6 +27,7 @@ import {
  * Models that support the Responses API
  */
 const RESPONSES_API_MODELS = [
+  "gpt-5",
   "gpt-4o",
   "gpt-4o-mini",
   "gpt-4.1",
@@ -35,6 +36,7 @@ const RESPONSES_API_MODELS = [
   "o1",
   "o1-mini",
   "o3",
+  "o3-pro",
   "o3-mini",
   "o3-mini-2025-01-31",
   "o4-mini"
@@ -44,10 +46,12 @@ const RESPONSES_API_MODELS = [
  * Model-specific token limits
  */
 const MODEL_TOKEN_LIMITS: Record<string, number> = {
-  "o3": 100000,
+  "gpt-5": 400000,
+  "o3": 128000,
+  "o3-pro": 128000,
   "o3-mini": 16384,
   "o4-mini": 32768,
-  "gpt-4.1": 32767,
+  "gpt-4.1": 128000,
   "gpt-4o": 32767,
   "default": 16384
 };

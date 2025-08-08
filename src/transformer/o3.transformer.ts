@@ -5,6 +5,8 @@ import { log } from "../utils/log";
 // o3 models that require special handling
 const O3_MODELS = [
   "o3",
+  "o3-pro",
+  "o4-mini",
   "o3-mini",
   "o3-mini-2025-01-31"
 ];

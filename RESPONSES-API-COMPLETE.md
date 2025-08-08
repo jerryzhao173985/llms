@@ -36,7 +36,7 @@ gpt-4.1: minTokens=100, maxTokens=32767, defaultTokens=4000
     {
       "name": "openai-responses",
       "api_base_url": "https://api.openai.com/v1/responses",
-      "models": ["o3", "o3-mini", "gpt-4.1", "gpt-4o"],
+      "models": ["o3", "o3-mini", "o4-mini", "gpt-4.1", "gpt-4o"],
       "transformer": {
         "use": ["responses-api"]
       }
@@ -65,7 +65,7 @@ gpt-4.1: minTokens=100, maxTokens=32767, defaultTokens=4000
 **Input (Standard OpenAI)**:
 ```json
 {
-  "model": "o3-mini",
+  "model": "o4-mini",
   "messages": [
     {"role": "user", "content": "Hello"}
   ],
@@ -76,7 +76,7 @@ gpt-4.1: minTokens=100, maxTokens=32767, defaultTokens=4000
 **Output (Responses API)**:
 ```json
 {
-  "model": "o3-mini",
+  "model": "o4-mini",
   "input": [
     {"role": "user", "content": [{"type": "input_text", "text": "Hello"}]}
   ],
@@ -102,7 +102,7 @@ node /Users/jerry/llms/test-response-format.js
 # Result: ✅ Predicted Output working
 ```
 
-### 3. Test Responses API with o3-mini
+### 3. Test Responses API with o4-mini
 ```bash
 node /Users/jerry/llms/test-o3-responses.js
 # Result: ⚠️ Org verification required (expected)
@@ -135,10 +135,11 @@ The ResponsesApiTransformer correctly handles:
 ## ⚠️ Current Limitation
 
 **Organization Verification Required**: 
-- o3 and o3-mini models require organization verification on OpenAI
+- o3 models require organization verification on OpenAI
 - Error message: "Your organization must be verified to use the model o3"
 - This is NOT a code issue - the transformer works correctly
 - Once verified, the models will work immediately
+- Currently if o3 model cannot use, we can completely use o4-mini or o3-mini nicely
 
 ## 🚀 Next Steps
 

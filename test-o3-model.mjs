@@ -2,7 +2,7 @@
 
 /**
  * Test o3 model with Response Format API
- * This tests o3-mini model (if available) with structured outputs
+ * This tests o4-mini model (if available) with structured outputs
  */
 
 import https from 'https';
@@ -67,15 +67,15 @@ function callOpenAI(requestBody, streaming = false) {
   });
 }
 
-// Test 1: Check o3-mini availability
+// Test 1: Check o4-mini availability
 async function testO3Availability() {
-  console.log('\n🔍 Test 1: Checking o3-mini Model Availability');
+  console.log('\n🔍 Test 1: Checking o4-mini Model Availability');
   console.log('=' .repeat(50));
   
   try {
     // Simple test to see if model exists
     const response = await callOpenAI({
-      model: 'o3-mini',
+      model: 'o4-mini',
       messages: [
         {
           role: 'user',
@@ -86,7 +86,7 @@ async function testO3Availability() {
       temperature: 0
     });
     
-    console.log('✅ o3-mini model is available!');
+    console.log('✅ o4-mini model is available!');
     console.log('Model:', response.model);
     console.log('Response:', response.choices[0].message.content);
     return true;
@@ -96,7 +96,7 @@ async function testO3Availability() {
         error.message.includes('not found') || 
         error.message.includes('invalid_model') ||
         error.message.includes('model_not_found')) {
-      console.log('ℹ️ o3-mini model is not available');
+      console.log('ℹ️ o4-mini model is not available');
       console.log('Note: o3 models are currently in development/preview');
       return false;
     } else if (error.message.includes('quota')) {
@@ -109,14 +109,14 @@ async function testO3Availability() {
   }
 }
 
-// Test 2: o3-mini with JSON Mode
+// Test 2: o4-mini with JSON Mode
 async function testO3JsonMode() {
-  console.log('\n🧪 Test 2: o3-mini with JSON Mode (json_object)');
+  console.log('\n🧪 Test 2: o4-mini with JSON Mode (json_object)');
   console.log('=' .repeat(50));
   
   try {
     const response = await callOpenAI({
-      model: 'o3-mini',
+      model: 'o4-mini',
       messages: [
         {
           role: 'system',
@@ -132,7 +132,7 @@ async function testO3JsonMode() {
       temperature: 0.7
     });
     
-    console.log('✅ JSON Mode Success with o3-mini!');
+    console.log('✅ JSON Mode Success with o4-mini!');
     console.log('Model used:', response.model);
     console.log('Raw content:', response.choices[0].message.content);
     
@@ -149,14 +149,14 @@ async function testO3JsonMode() {
   }
 }
 
-// Test 3: o3-mini with Structured Output (JSON Schema)
+// Test 3: o4-mini with Structured Output (JSON Schema)
 async function testO3StructuredOutput() {
-  console.log('\n🧪 Test 3: o3-mini with Structured Output (json_schema)');
+  console.log('\n🧪 Test 3: o4-mini with Structured Output (json_schema)');
   console.log('=' .repeat(50));
   
   try {
     const response = await callOpenAI({
-      model: 'o3-mini',
+      model: 'o4-mini',
       messages: [
         {
           role: 'user',
@@ -202,7 +202,7 @@ async function testO3StructuredOutput() {
       temperature: 0.7
     });
     
-    console.log('✅ Structured Output Success with o3-mini!');
+    console.log('✅ Structured Output Success with o4-mini!');
     console.log('Model used:', response.model);
     
     // Check for refusal
@@ -233,14 +233,14 @@ async function testO3StructuredOutput() {
   }
 }
 
-// Test 4: o3-mini with Complex Nested Schema
+// Test 4: o4-mini with Complex Nested Schema
 async function testO3ComplexSchema() {
-  console.log('\n🧪 Test 4: o3-mini with Complex Nested Schema');
+  console.log('\n🧪 Test 4: o4-mini with Complex Nested Schema');
   console.log('=' .repeat(50));
   
   try {
     const response = await callOpenAI({
-      model: 'o3-mini',
+      model: 'o4-mini',
       messages: [
         {
           role: 'user',
@@ -312,7 +312,7 @@ async function testO3ComplexSchema() {
       temperature: 0.7
     });
     
-    console.log('✅ Complex Schema Success with o3-mini!');
+    console.log('✅ Complex Schema Success with o4-mini!');
     console.log('Model used:', response.model);
     
     const parsed = JSON.parse(response.choices[0].message.content);
@@ -333,16 +333,16 @@ async function testO3ComplexSchema() {
   }
 }
 
-// Test 5: o3-mini with Streaming Structured Output
+// Test 5: o4-mini with Streaming Structured Output
 async function testO3StreamingStructured() {
-  console.log('\n🧪 Test 5: o3-mini with Streaming Structured Output');
+  console.log('\n🧪 Test 5: o4-mini with Streaming Structured Output');
   console.log('=' .repeat(50));
   
   try {
     console.log('📡 Starting stream...\n');
     
     const response = await callOpenAI({
-      model: 'o3-mini',
+      model: 'o4-mini',
       messages: [
         {
           role: 'user',
@@ -436,11 +436,11 @@ async function runAllTests() {
   console.log('Timestamp:', new Date().toISOString());
   console.log();
   
-  // Check if o3-mini is available
+  // Check if o4-mini is available
   const o3Available = await testO3Availability();
   
   if (o3Available) {
-    console.log('\n✨ Running o3-mini tests...\n');
+    console.log('\n✨ Running o4-mini tests...\n');
     
     // Run all o3 tests
     await testO3JsonMode();
@@ -449,7 +449,7 @@ async function runAllTests() {
     await testO3StreamingStructured();
     
   } else {
-    console.log('\n⚠️ o3-mini not available, testing with fallback model...\n');
+    console.log('\n⚠️ o4-mini not available, testing with fallback model...\n');
     await testWithFallbackModel();
   }
   
@@ -458,9 +458,9 @@ async function runAllTests() {
   console.log('=' .repeat(50));
   
   if (o3Available) {
-    console.log('✅ o3-mini model tested successfully');
-    console.log('✅ JSON Mode (json_object) works with o3-mini');
-    console.log('✅ Structured Output (json_schema) works with o3-mini');
+    console.log('✅ o4-mini model tested successfully');
+    console.log('✅ JSON Mode (json_object) works with o4-mini');
+    console.log('✅ Structured Output (json_schema) works with o4-mini');
     console.log('✅ Complex nested schemas supported');
     console.log('✅ Streaming with structured output supported');
   } else {

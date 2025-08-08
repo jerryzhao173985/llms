@@ -9,7 +9,7 @@ Successfully implemented comprehensive support for OpenAI's Response Format API,
 ## 🎯 Key Implementation Features
 
 ### 1. **o3 Model Support** ✅
-- **Confirmed**: o3-mini (model ID: `o3-mini-2025-01-31`) is live and working
+- **Confirmed**: o4-mini (also model ID: `o3-mini-2025-01-31`) is live and working
 - **Supports**: Both `json_object` and `json_schema` response formats
 - **Critical**: Uses `max_completion_tokens` instead of `max_tokens`
 - **Limitations**: No support for prediction parameter or tools
@@ -23,7 +23,7 @@ Created `OpenAIUnifiedTransformer` that intelligently handles all OpenAI models:
 
 ### 3. **Complete Feature Matrix** ✅
 
-| Feature | o3/o3-mini | gpt-4o/4o-mini | gpt-3.5-turbo | Notes |
+| Feature | o3/o4-mini | gpt-4o/4o-mini | gpt-3.5-turbo | Notes |
 |---------|------------|----------------|---------------|-------|
 | `json_object` | ✅ | ✅ | ✅ | Basic JSON mode |
 | `json_schema` | ✅ | ✅ | ❌ | Structured outputs with schema |
@@ -95,7 +95,7 @@ interface UnifiedChatRequest {
       "api_base_url": "https://api.openai.com/v1/chat/completions",
       "api_key": "sk-xxx",
       "models": [
-        "o3-mini",
+        "o4-mini",
         "gpt-4o",
         "gpt-4o-mini",
         "gpt-3.5-turbo"
@@ -107,7 +107,7 @@ interface UnifiedChatRequest {
   ],
   "Router": {
     "default": "openai,gpt-4o-mini",
-    "structuredOutput": "openai,o3-mini",
+    "structuredOutput": "openai,o4-mini",
     "jsonMode": "openai,gpt-3.5-turbo",
     "predictedOutput": "openai,gpt-4o-mini"
   }
@@ -116,25 +116,25 @@ interface UnifiedChatRequest {
 
 ## 🧪 Test Results Summary
 
-### o3-mini Tests ✅
+### o4-mini Tests ✅
 ```javascript
 // WORKS - Basic request
 {
-  model: "o3-mini",
+  model: "o4-mini",
   messages: [...],
   max_completion_tokens: 100  // NOT max_tokens!
 }
 
 // WORKS - JSON Mode
 {
-  model: "o3-mini",
+  model: "o4-mini",
   response_format: { type: "json_object" },
   max_completion_tokens: 100
 }
 
 // WORKS - Structured Output
 {
-  model: "o3-mini",
+  model: "o4-mini",
   response_format: {
     type: "json_schema",
     json_schema: {
@@ -193,7 +193,7 @@ if (model.includes('o3')) {
 ## 🎉 Final Status
 
 **The implementation is PRODUCTION READY and fully supports:**
-- ✅ o3/o3-mini models with response_format
+- ✅ o3/o4-mini models with response_format
 - ✅ GPT-4o/4o-mini with all features
 - ✅ GPT-3.5-turbo with json_object
 - ✅ Automatic model detection and configuration

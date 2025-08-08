@@ -244,36 +244,66 @@ export class ResponsesApiV2Transformer implements Transformer {
         const content = [];
         
         // Preserve the actual content if present - this is crucial for understanding continuation
-        if (msg.content && msg.content.trim().length > 0) {
+        // Handle different content types properly
+        let textContent = '';
+        if (typeof msg.content === 'string') {
+          textContent = msg.content;
+        } else if (Array.isArray(msg.content)) {
+          // Extract text from array content
+          const textItems = msg.content.filter((item: any) => 
+            typeof item === 'string' || (item && item.type === 'text' && item.text)
+          );
+          textContent = textItems.map((item: any) => 
+            typeof item === 'string' ? item : item.text
+          ).join(' ');
+        }
+        
+        if (textContent && textContent.trim().length > 0) {
           content.push({
             type: 'output_text',
-            text: msg.content
+            text: textContent
           });
         }
         
-        // Add tool call information
-        const toolCallsText = msg.tool_calls.map((tc: any) => 
-          `[Tool: ${tc.function?.name || tc.name} (${tc.id})]`
-        ).join(' ');
-        
-        if (toolCallsText) {
-          // If we have content, append tool info; otherwise use it as main content
-          if (content.length > 0) {
-            content[0].text += `\n${toolCallsText}`;
-          } else {
-            content.push({
-              type: 'output_text',
-              text: toolCallsText
-            });
-          }
-        }
+        // Add tool call information with better semantics
+        const toolNames = msg.tool_calls.map((tc: any) => 
+          tc.function?.name || tc.name || 'unknown'
+        );
+        const toolCallsText = `[Executing ${toolNames.length} tool${toolNames.length > 1 ? 's' : ''}: ${toolNames.join(', ')}]`;
         
         if (content.length > 0) {
-          transformed.push({
-            role: 'assistant',
-            content: content
+          // If we have content, append tool info on new line
+          content[0].text += `\n${toolCallsText}`;
+        } else {
+          // No content - this is pure tool execution
+          // Add semantic meaning instead of just empty content
+          content.push({
+            type: 'output_text',
+            text: toolCallsText
           });
         }
+        
+        // CRITICAL FIX: Always ensure content exists and is not empty
+        if (!content || content.length === 0) {
+          content.push({
+            type: 'output_text',
+            text: toolCallsText || '[Tool execution]'
+          });
+        }
+        
+        // CRITICAL FIX: Ensure every content item has valid text
+        content.forEach((item, idx) => {
+          if (!item || typeof item !== 'object') {
+            content[idx] = { type: 'output_text', text: '[Invalid content item]' };
+          } else if (!item.text || typeof item.text !== 'string') {
+            item.text = item.text?.toString() || '[Empty content]';
+          }
+        });
+        
+        transformed.push({
+          role: 'assistant',
+          content: content
+        });
         continue;
       }
       
@@ -292,90 +322,326 @@ export class ResponsesApiV2Transformer implements Transformer {
         }];
       } else if (Array.isArray(msg.content)) {
         transformedMsg.content = this.transformContentArray(msg.content, msg.role);
-      } else if (msg.content === null) {
-        // Empty content - skip
-        continue;
+      } else if (msg.content === null || msg.content === undefined) {
+        // Empty/null/undefined content - preserve semantic meaning
+        // For user messages, this often means approval/continuation
+        // For assistant messages without tools, this shouldn't happen
+        if (msg.role === 'user') {
+          // User approval or continuation signal
+          transformedMsg.content = [{
+            type: contentType as any,
+            text: ''  // Empty is valid for user continuation
+          }];
+        } else {
+          // Assistant without content or tools - add placeholder
+          transformedMsg.content = [{
+            type: contentType as any,
+            text: '[Continuing...]'
+          }];
+        }
+      } else {
+        // Fallback - ensure content is never null/undefined
+        this.logWarn(`Unexpected content type for ${msg.role}: ${typeof msg.content}, value: ${JSON.stringify(msg.content)}`);
+        transformedMsg.content = [{
+          type: contentType as any,
+          text: msg.content?.toString() || '[Invalid content]'
+        }];
       }
       
       // Only add if we have content
-      if (transformedMsg.content.length > 0) {
+      if (transformedMsg.content && transformedMsg.content.length > 0) {
         transformed.push(transformedMsg);
       }
     }
     
-    return transformed;
+    // COMPREHENSIVE SAFEGUARD: ensure no message has null/invalid content
+    const sanitized = transformed.map((msg, idx) => {
+      // Check if content is null, undefined, or empty
+      if (!msg.content || msg.content === null || msg.content === undefined) {
+        this.logError(`CRITICAL: Message at index ${idx} has null/undefined content after transformation!`);
+        const contentType = msg.role === 'assistant' ? 'output_text' : 'input_text';
+        return {
+          ...msg,
+          content: [{ type: contentType, text: '[Fixed null content]' }]
+        };
+      }
+      
+      // Check if content is an empty array
+      if (Array.isArray(msg.content) && msg.content.length === 0) {
+        this.logError(`CRITICAL: Message at index ${idx} has empty content array after transformation!`);
+        const contentType = msg.role === 'assistant' ? 'output_text' : 'input_text';
+        return {
+          ...msg,
+          content: [{ type: contentType, text: '[Fixed empty content]' }]
+        };
+      }
+      
+      // Check each content item in the array
+      if (Array.isArray(msg.content)) {
+        const sanitizedContent = msg.content.map((item, itemIdx) => {
+          if (!item || item === null || item === undefined) {
+            this.logError(`CRITICAL: Content item at index ${itemIdx} in message ${idx} is null/undefined!`);
+            const contentType = msg.role === 'assistant' ? 'output_text' : 'input_text';
+            return { type: contentType, text: '[Fixed null content item]' };
+          }
+          
+          // Ensure text property exists and is valid
+          if (item.text === null || item.text === undefined) {
+            this.logError(`CRITICAL: Content item at index ${itemIdx} in message ${idx} has null text!`);
+            return { ...item, text: '[Fixed null text]' };
+          }
+          
+          // Ensure text is a string
+          if (typeof item.text !== 'string') {
+            this.logError(`CRITICAL: Content item at index ${itemIdx} in message ${idx} has non-string text: ${typeof item.text}`);
+            return { ...item, text: item.text?.toString() || '[Fixed invalid text]' };
+          }
+          
+          return item;
+        });
+        
+        return { ...msg, content: sanitizedContent };
+      }
+      
+      return msg;
+    });
+    
+    return sanitized;
   }
 
   private transformContentArray(content: any[], role: string): ResponsesApiContent[] {
     const result: ResponsesApiContent[] = [];
     const contentType = this.getContentType(role);
     
-    for (const item of content) {
-      if (typeof item === 'string') {
+    // Handle null/undefined/empty content array
+    if (!content || !Array.isArray(content)) {
+      this.logWarn(`Invalid content array for ${role} message - using empty placeholder`);
+      return [{
+        type: contentType as any,
+        text: '[Fixed invalid content array]'
+      }];
+    }
+    
+    for (let i = 0; i < content.length; i++) {
+      const item = content[i];
+      
+      // Skip null/undefined items but log them
+      if (item === null || item === undefined) {
+        this.logWarn(`Skipping null/undefined content item at index ${i} for ${role} message`);
+        continue;
+      }
+      
+      try {
+        if (typeof item === 'string') {
+          // Handle string items - ensure they're valid
+          const text = item || '';  // Convert falsy strings to empty string
+          result.push({
+            type: contentType as any,
+            text: String(text)  // Ensure it's always a string
+          });
+        } else if (item && typeof item === 'object' && item.type === 'text') {
+          // Ensure text is not null/undefined - use comprehensive checks
+          let text = '';
+          if (item.text !== null && item.text !== undefined) {
+            text = String(item.text);  // Convert to string safely
+          } else {
+            this.logWarn(`Text content item has null/undefined text property for ${role} message`);
+            text = '[Fixed null text property]';
+          }
+          
+          result.push({
+            type: contentType as any,
+            text: text
+          });
+        } else if (item && typeof item === 'object' && item.type === 'image_url') {
+          // Handle image content with null checks
+          const imageType = role === 'assistant' ? 'output_image' : 'input_image';
+          const imageUrl = item.image_url?.url || '[Invalid image URL]';
+          result.push({
+            type: imageType as any,
+            image_url: imageUrl
+          });
+        } else if (item && typeof item === 'object' && item.type === 'tool_use') {
+          // Tool use in assistant messages must be converted to output_text for Responses API
+          const toolName = item.name || 'unknown';
+          const toolId = item.id || 'unknown';
+          const toolInput = item.input ? JSON.stringify(item.input, null, 2) : 'null';
+          const toolUseText = `[Tool call: ${toolName} (${toolId})]\nInput: ${toolInput}`;
+          result.push({
+            type: role === 'assistant' ? 'output_text' : 'input_text',
+            text: toolUseText
+          } as any);
+        } else if (item && typeof item === 'object' && item.type === 'tool_result') {
+          // Handle tool results as input_text for Responses API (only in user messages)
+          let contentText = '';
+          if (item.content !== null && item.content !== undefined) {
+            contentText = typeof item.content === 'string' ? item.content : JSON.stringify(item.content);
+          } else {
+            contentText = '[No result content]';
+          }
+          
+          const toolId = item.tool_use_id || item.tool_call_id || 'unknown';
+          const toolResultText = `[Tool Result for ${toolId}]\n${contentText}`;
+          
+          result.push({
+            type: 'input_text',  // Tool results are always input_text
+            text: toolResultText
+          } as any);
+        } else {
+          // Handle unknown/invalid content types
+          this.logWarn(`Unknown content item type for ${role} message: ${item?.type || typeof item}`);
+          const fallbackText = item?.text?.toString() || item?.toString() || '[Unknown content type]';
+          result.push({
+            type: contentType as any,
+            text: fallbackText
+          });
+        }
+      } catch (error) {
+        this.logError(`Error processing content item at index ${i} for ${role} message: ${error}`);
         result.push({
           type: contentType as any,
-          text: item
+          text: '[Error processing content item]'
         });
-      } else if (item.type === 'text') {
-        result.push({
-          type: contentType as any,
-          text: item.text
-        });
-      } else if (item.type === 'image_url') {
-        const imageType = role === 'assistant' ? 'output_image' : 'input_image';
-        result.push({
-          type: imageType as any,
-          image_url: item.image_url.url
-        });
-      } else if (item.type === 'tool_use') {
-        // Tool use in assistant messages must be converted to output_text for Responses API
-        const toolUseText = `[Tool call: ${item.name} (${item.id})]\nInput: ${JSON.stringify(item.input, null, 2)}`;
-        result.push({
-          type: role === 'assistant' ? 'output_text' : 'input_text',
-          text: toolUseText
-        } as any);
-      } else if (item.type === 'tool_result') {
-        // Handle tool results as input_text for Responses API (only in user messages)
-        const content = typeof item.content === 'string' ? item.content : JSON.stringify(item.content);
-        const toolId = item.tool_use_id || item.tool_call_id;
-        const toolResultText = `[Tool Result for ${toolId}]\n${content}`;
-        
-        result.push({
-          type: 'input_text',  // Tool results are always input_text
-          text: toolResultText
-        } as any);
       }
     }
     
-    return result;
+    // CRITICAL FIX: Ensure we always return at least one item to avoid null content
+    if (result.length === 0) {
+      this.logWarn(`Empty content array after processing for ${role} message - adding placeholder`);
+      result.push({
+        type: contentType as any,
+        text: '[Fixed empty content array]'
+      });
+    }
+    
+    // Final validation: ensure all items have valid text
+    const validatedResult = result.map((item, idx) => {
+      if (!item || typeof item !== 'object') {
+        this.logError(`Invalid content item at index ${idx} after processing for ${role} message`);
+        return {
+          type: contentType as any,
+          text: '[Fixed invalid content item]'
+        };
+      }
+      
+      if (item.type === 'input_text' || item.type === 'output_text') {
+        if (item.text === null || item.text === undefined) {
+          this.logError(`Null text in content item at index ${idx} after processing for ${role} message`);
+          return {
+            ...item,
+            text: '[Fixed null text in processed item]'
+          };
+        }
+        
+        if (typeof item.text !== 'string') {
+          this.logError(`Non-string text in content item at index ${idx} after processing for ${role} message`);
+          return {
+            ...item,
+            text: item.text?.toString() || '[Fixed non-string text]'
+          };
+        }
+      }
+      
+      return item;
+    });
+    
+    return validatedResult;
   }
 
   private createToolResult(msg: any): ResponsesApiContent {
     // OpenAI Responses API doesn't support tool_result type
     // Format tool results as input_text with structured content
-    const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
-    const toolResultText = `[Tool Result ${msg.tool_call_id}]\n${content}`;
     
-    return {
+    // CRITICAL FIX: Comprehensive null checks for tool result content
+    let content = '';
+    if (msg.content !== null && msg.content !== undefined) {
+      if (typeof msg.content === 'string') {
+        content = msg.content;
+      } else if (typeof msg.content === 'object') {
+        try {
+          content = JSON.stringify(msg.content, null, 2);
+        } catch (error) {
+          this.logError(`Error stringifying tool result content: ${error}`);
+          content = '[Error serializing tool result]';
+        }
+      } else {
+        content = String(msg.content);
+      }
+    } else {
+      content = '[No output]';  // Clear indication of null/undefined result
+    }
+    
+    // Ensure tool_call_id is valid
+    const toolId = msg.tool_call_id || msg.tool_use_id || 'unknown';
+    
+    const toolResultText = `[Tool Result ${toolId}]\n${content}`;
+    
+    // CRITICAL FIX: Ensure the returned object is never null and has valid text
+    const result = {
       type: 'input_text',
-      text: toolResultText
+      text: toolResultText || '[Empty tool result]'
     } as any;
+    
+    // Final validation
+    if (!result.text || typeof result.text !== 'string') {
+      this.logError(`Invalid tool result text after processing: ${typeof result.text}`);
+      result.text = '[Fixed invalid tool result text]';
+    }
+    
+    return result;
   }
 
   private transformSystemContent(system: any): ResponsesApiContent[] {
-    if (typeof system === 'string') {
-      return [{ type: 'input_text', text: system }];
-    } else if (Array.isArray(system)) {
-      return system.map(item => {
-        if (typeof item === 'string') {
-          return { type: 'input_text', text: item };
-        } else if (item.type === 'text') {
-          return { type: 'input_text', text: item.text };
-        }
-        return item;
-      });
+    // CRITICAL FIX: Comprehensive null checks for system content
+    if (system === null || system === undefined) {
+      this.logWarn('System content is null/undefined - using empty placeholder');
+      return [{ type: 'input_text', text: '[Empty system message]' }];
     }
-    return system;
+    
+    if (typeof system === 'string') {
+      const text = system || '[Empty system string]';
+      return [{ type: 'input_text', text: String(text) }];
+    } else if (Array.isArray(system)) {
+      const result = system.map((item, idx) => {
+        if (item === null || item === undefined) {
+          this.logWarn(`System content item at index ${idx} is null/undefined`);
+          return { type: 'input_text', text: '[Fixed null system item]' };
+        }
+        
+        if (typeof item === 'string') {
+          const text = item || '[Empty system item]';
+          return { type: 'input_text', text: String(text) };
+        } else if (item && typeof item === 'object' && item.type === 'text') {
+          const text = item.text !== null && item.text !== undefined ? String(item.text) : '[Empty system text]';
+          return { type: 'input_text', text: text };
+        } else {
+          this.logWarn(`Unknown system content item type at index ${idx}: ${typeof item}`);
+          const fallbackText = item?.text?.toString() || item?.toString() || '[Unknown system item]';
+          return { type: 'input_text', text: fallbackText };
+        }
+      });
+      
+      // Ensure we have at least one valid system content item
+      const validResult = result.filter(item => item && item.text);
+      if (validResult.length === 0) {
+        this.logWarn('No valid system content items after processing - adding placeholder');
+        return [{ type: 'input_text', text: '[Fixed empty system content]' }];
+      }
+      
+      return validResult;
+    } else if (system && typeof system === 'object') {
+      // Handle object system content
+      if (system.text !== null && system.text !== undefined) {
+        return [{ type: 'input_text', text: String(system.text) }];
+      } else {
+        this.logWarn('System object has no valid text property');
+        return [{ type: 'input_text', text: '[Fixed invalid system object]' }];
+      }
+    } else {
+      this.logWarn(`Invalid system content type: ${typeof system}`);
+      const fallbackText = system?.toString() || '[Invalid system content]';
+      return [{ type: 'input_text', text: fallbackText }];
+    }
   }
 
   private getContentType(role: string): string {
@@ -543,16 +809,16 @@ export class ResponsesApiV2Transformer implements Transformer {
       // Check for numbered items or lists
       const hasNumberedItems = /\d+[.)]/g.test(content) || /^[-*]/gm.test(content);
       
-      // Check for incomplete sentences
-      const endsWithComma = content.trim().endsWith(',');
-      const hasEllipsis = content.includes('...');
+      // Check for incomplete sentences (only if content is a string)
+      const endsWithComma = typeof content === 'string' && content.trim().endsWith(',');
+      const hasEllipsis = typeof content === 'string' && content.includes('...');
       
       // Check if this is a reasoning model (they often continue)
       const isReasoningModel = this.isReasoningModel(response.model || this.currentModel);
       
       // More aggressive continuation detection
       return hasContinuationPhrase || hasNumberedItems || endsWithComma || 
-             hasEllipsis || isReasoningModel || content.length > 100;
+             hasEllipsis || isReasoningModel || (typeof content === 'string' && content.length > 100);
     }
     
     // Default to continuing if uncertain - better to continue than stop prematurely
@@ -610,37 +876,94 @@ export class ResponsesApiV2Transformer implements Transformer {
     const messageOutput = response.output?.find(o => o.type === 'message') as MessageOutput;
     const functionCalls = response.output?.filter(o => o.type === 'function_call') as FunctionCallOutput[];
     
-    // Handle message content
+    // Handle message content with null checks
     if (messageOutput) {
-      const textContent = messageOutput.content?.find(c => c.type === 'output_text');
+      const textContent = messageOutput.content?.find(c => c && c.type === 'output_text');
       if (textContent && 'text' in textContent) {
-        result.choices[0].message.content = textContent.text;
+        // CRITICAL FIX: Ensure text is never null
+        const text = textContent.text;
+        if (text !== null && text !== undefined) {
+          result.choices[0].message.content = String(text);
+        } else {
+          this.logWarn('Message output has null text content');
+          result.choices[0].message.content = '[Fixed null message content]';
+        }
+      } else if (!result.choices[0].message.content) {
+        // No text content found - check if this is expected
+        this.logDebug('No text content in message output');
+        result.choices[0].message.content = null;  // This is valid for tool-only responses
       }
       
-      // Handle inline tool calls
-      const toolUses = messageOutput.content?.filter(c => c.type === 'tool_use');
+      // Handle inline tool calls with null checks
+      const toolUses = messageOutput.content?.filter(c => c && c.type === 'tool_use');
       if (toolUses && toolUses.length > 0) {
-        result.choices[0].message.tool_calls = toolUses.map((tc: any) => ({
-          id: tc.id,
-          type: 'function',
-          function: {
-            name: tc.name,
-            arguments: JSON.stringify(tc.input)
+        result.choices[0].message.tool_calls = toolUses.map((tc: any, idx: number) => {
+          // CRITICAL FIX: Ensure all tool call properties are valid
+          const toolId = tc.id || `tool_${Date.now()}_${idx}`;
+          const toolName = tc.name || 'unknown_tool';
+          let toolArgs = '{}';
+          
+          try {
+            if (tc.input !== null && tc.input !== undefined) {
+              toolArgs = JSON.stringify(tc.input);
+            }
+          } catch (error) {
+            this.logError(`Error stringifying tool arguments for ${toolName}: ${error}`);
+            toolArgs = '{"error": "Failed to serialize arguments"}';
           }
-        }));
+          
+          return {
+            id: toolId,
+            type: 'function',
+            function: {
+              name: toolName,
+              arguments: toolArgs
+            }
+          };
+        });
       }
     }
     
-    // Handle separate function calls
+    // Handle separate function calls with comprehensive null checks
     if (functionCalls && functionCalls.length > 0) {
-      const toolCalls = functionCalls.map(fc => ({
-        id: fc.call_id,
-        type: 'function' as const,
-        function: {
-          name: fc.name,
-          arguments: fc.arguments
+      const toolCalls = functionCalls.map((fc, idx) => {
+        // CRITICAL FIX: Ensure all function call properties are valid
+        const callId = fc.call_id || `func_${Date.now()}_${idx}`;
+        const funcName = fc.name || 'unknown_function';
+        let funcArgs = '{}';
+        
+        if (fc.arguments !== null && fc.arguments !== undefined) {
+          if (typeof fc.arguments === 'string') {
+            // Validate JSON string
+            try {
+              JSON.parse(fc.arguments);
+              funcArgs = fc.arguments;
+            } catch (error) {
+              this.logError(`Invalid JSON in function arguments for ${funcName}: ${error}`);
+              funcArgs = '{"error": "Invalid JSON arguments"}';
+            }
+          } else {
+            // Convert object to JSON string
+            try {
+              funcArgs = JSON.stringify(fc.arguments);
+            } catch (error) {
+              this.logError(`Error stringifying function arguments for ${funcName}: ${error}`);
+              funcArgs = '{"error": "Failed to serialize arguments"}';
+            }
+          }
+        } else {
+          this.logWarn(`Function call ${funcName} has null/undefined arguments`);
         }
-      }));
+        
+        return {
+          id: callId,
+          type: 'function' as const,
+          function: {
+            name: funcName,
+            arguments: funcArgs
+          }
+        };
+      });
       
       if (result.choices[0].message.tool_calls) {
         result.choices[0].message.tool_calls.push(...toolCalls);
@@ -653,6 +976,7 @@ export class ResponsesApiV2Transformer implements Transformer {
       // We want 'stop' which means "continue the conversation"
       
       const hasContent = result.choices[0].message.content && 
+                        typeof result.choices[0].message.content === 'string' &&
                         result.choices[0].message.content.trim().length > 0;
       const isIncomplete = response.status === 'incomplete';
       const shouldContinue = this.shouldContinue(response, hasContent);
@@ -664,23 +988,20 @@ export class ResponsesApiV2Transformer implements Transformer {
         // Response was cut off due to token limit
         finishReason = 'length';
         this.logDebug('Response incomplete - token limit reached');
-      } else if (this.options.alwaysContinueWithTools && functionCalls.length > 0) {
-        // Continuous execution mode - NEVER stop on tool calls
-        finishReason = 'stop';  // 'stop' actually means "continue conversation"
-        this.logInfo(`Continuous execution: ${functionCalls.length} tool calls, continuing...`);
-      } else if (hasContent && functionCalls.length > 0) {
-        // Model has both content and tools - it's explaining its plan
-        finishReason = 'stop';  // Let it continue
-        this.logInfo('Model explaining with tools - continuous flow');
-      } else if (functionCalls.length > 0 && !hasContent) {
-        // Only tools, no explanation
-        if (this.options.continuousExecution || shouldContinue) {
-          finishReason = 'stop';  // Force continuation
-          this.logInfo('Tools without content - forcing continuation');
+      } else if (functionCalls.length > 0) {
+        // CRITICAL FIX: ALWAYS use 'stop' for tool calls to ensure continuous execution
+        // The Responses API requires 'stop' for continuation, NOT 'tool_calls'
+        // 'tool_calls' would break the multi-turn flow
+        finishReason = 'stop';
+        
+        if (hasContent) {
+          this.logInfo(`Continuous execution: ${functionCalls.length} tool calls with content - continuing...`);
         } else {
-          finishReason = 'tool_calls';  // Traditional: wait for results
-          this.logDebug('Tools only - waiting for results (legacy mode)');
+          this.logInfo(`Continuous execution: ${functionCalls.length} tool calls without content - continuing...`);
         }
+        
+        // Log detailed reasoning for debugging
+        this.logDebug(`Tool execution will continue (finish_reason='stop') - hasContent: ${hasContent}, toolCount: ${functionCalls.length}`);
       } else {
         // No tools, just content or nothing
         finishReason = 'stop';
@@ -700,11 +1021,22 @@ export class ResponsesApiV2Transformer implements Transformer {
       }
     }
     
-    // Handle incomplete responses
+    // Handle incomplete responses with null safety
     if (response.status === 'incomplete') {
       result.choices[0].finish_reason = 'length';
-      if (!result.choices[0].message.content) {
+      if (!result.choices[0].message.content || result.choices[0].message.content === null) {
         result.choices[0].message.content = '[Response incomplete - token limit reached]';
+      }
+    }
+    
+    // FINAL VALIDATION: Ensure message content is never unexpectedly null
+    if (result.choices[0].message.content === undefined) {
+      // Only set to null if we don't have tool calls, otherwise it should have some content
+      if (!result.choices[0].message.tool_calls || result.choices[0].message.tool_calls.length === 0) {
+        result.choices[0].message.content = '[No content generated]';
+        this.logWarn('Message has no content and no tool calls - adding placeholder');
+      } else {
+        result.choices[0].message.content = null;  // Valid for tool-only responses
       }
     }
     
@@ -824,9 +1156,13 @@ export class ResponsesApiV2Transformer implements Transformer {
           };
         } else if (event.item?.type === 'function_call') {
           state.hadToolCalls = true;  // Track that we have tool calls
+          // CRITICAL FIX: Ensure tool call properties are valid
+          const callId = event.item.call_id || `stream_tool_${Date.now()}`;
+          const toolName = event.item.name || 'unknown_stream_tool';
+          
           state.currentToolCall = {
-            id: event.item.call_id,
-            name: event.item.name,
+            id: callId,
+            name: toolName,
             arguments: ''
           };
           return {
@@ -839,10 +1175,10 @@ export class ResponsesApiV2Transformer implements Transformer {
               delta: {
                 tool_calls: [{
                   index: 0,
-                  id: event.item.call_id,
+                  id: callId,
                   type: 'function',
                   function: {
-                    name: event.item.name,
+                    name: toolName,
                     arguments: ''
                   }
                 }]
@@ -855,10 +1191,13 @@ export class ResponsesApiV2Transformer implements Transformer {
         
       case 'response.output_text.delta':
       case 'response.text.delta':
-        if (event.delta) {
+        // CRITICAL FIX: Ensure delta is never null and is a string
+        if (event.delta !== null && event.delta !== undefined) {
+          const deltaText = String(event.delta);  // Ensure it's a string
           state.hasContent = true;
-          state.pendingText.push(event.delta);
-          state.contentLength = (state.contentLength || 0) + event.delta.length;
+          state.pendingText = state.pendingText || [];  // Ensure array exists
+          state.pendingText.push(deltaText);
+          state.contentLength = (state.contentLength || 0) + deltaText.length;
           return {
             id: state.responseId || 'stream',
             object: 'chat.completion.chunk',
@@ -866,34 +1205,42 @@ export class ResponsesApiV2Transformer implements Transformer {
             model: this.currentModel,
             choices: [{
               index: 0,
-              delta: { content: event.delta },
+              delta: { content: deltaText },
               finish_reason: null
             }]
           };
+        } else {
+          this.logWarn('Received null/undefined delta in text stream event');
         }
         return null;
         
       case 'response.function_call.delta':
+        // CRITICAL FIX: Ensure delta and arguments are valid
         if (state.currentToolCall && event.delta) {
-          state.currentToolCall.arguments += event.delta.arguments || '';
-          return {
-            id: state.responseId || 'stream',
-            object: 'chat.completion.chunk',
-            created: Math.floor(Date.now() / 1000),
-            model: this.currentModel,
-            choices: [{
-              index: 0,
-              delta: {
-                tool_calls: [{
-                  index: 0,
-                  function: {
-                    arguments: event.delta.arguments
-                  }
-                }]
-              },
-              finish_reason: null
-            }]
-          };
+          const deltaArgs = event.delta.arguments || '';
+          if (typeof deltaArgs === 'string') {
+            state.currentToolCall.arguments = (state.currentToolCall.arguments || '') + deltaArgs;
+            return {
+              id: state.responseId || 'stream',
+              object: 'chat.completion.chunk',
+              created: Math.floor(Date.now() / 1000),
+              model: this.currentModel,
+              choices: [{
+                index: 0,
+                delta: {
+                  tool_calls: [{
+                    index: 0,
+                    function: {
+                      arguments: deltaArgs
+                    }
+                  }]
+                },
+                finish_reason: null
+              }]
+            };
+          } else {
+            this.logWarn(`Invalid delta arguments type: ${typeof deltaArgs}`);
+          }
         }
         return null;
         
@@ -952,26 +1299,11 @@ export class ResponsesApiV2Transformer implements Transformer {
              contentText.includes('step') ||
              contentText.includes('task'));
           
-          // Apply same logic as non-streaming for consistency
-          if (hasTools && hasContent) {
-            // Has both tools and content - ALWAYS continue
-            this.logInfo('Stream: Tools+content - continuous execution');
-            return 'stop';  // 'stop' means continue conversation
-          } else if (hasTools && !hasContent) {
-            // Only tools, no content
-            if (this.options.alwaysContinueWithTools || this.options.continuousExecution) {
-              // Continuous execution enabled - force continuation
-              this.logInfo('Stream: Tools detected - forcing continuation');
-              return 'stop';  // Continue even without content
-            } else if (this.isReasoningModel(this.currentModel)) {
-              // Reasoning models typically continue
-              this.logInfo('Stream: Reasoning model with tools - continuing');
-              return 'stop';
-            } else {
-              // Legacy mode: wait for tool results
-              this.logDebug('Stream: Tools only - legacy wait mode');
-              return 'tool_calls';
-            }
+          // CRITICAL FIX: Apply same logic as non-streaming - ALWAYS 'stop' for tools
+          if (hasTools) {
+            // ANY tool calls require 'stop' for continuous execution
+            this.logInfo(`Stream: ${hasContent ? 'Tools with content' : 'Tools only'} - continuous execution`);
+            return 'stop';  // ALWAYS 'stop' to continue conversation
           } else {
             // No tools - normal completion
             return 'stop';

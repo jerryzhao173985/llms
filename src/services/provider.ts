@@ -8,6 +8,7 @@ import {
 } from "../types/llm";
 import { ConfigService } from "./config";
 import { TransformerService } from "./transformer";
+import { log } from "../utils/log";
 
 export class ProviderService {
   private providers: Map<string, LLMProvider> = new Map();
